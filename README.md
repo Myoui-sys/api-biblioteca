@@ -1,73 +1,59 @@
-# Testes Automatizados — API Biblioteca
+# Automação de Testes — API Biblioteca
 
-## 1. Sobre o projeto
+Projeto de automação de testes utilizando **Playwright e TypeScript**, com testes de API e testes End-to-End (E2E) em uma aplicação de gerenciamento de biblioteca.
 
-Este projeto foi desenvolvido como atividade prática de automação de testes utilizando Playwright e TypeScript.
+O objetivo das atividades foi praticar autenticação, criação e exclusão de dados pela API, interação com a interface web, validação de funcionalidades e gerenciamento do ciclo de vida dos dados de teste.
 
-O objetivo é aplicar testes automatizados em um sistema de biblioteca, utilizando requisições à API e interações com a interface da aplicação.
+## Tecnologias utilizadas
 
-A atividade também aborda o conceito de **teardown**, responsável por realizar a limpeza dos dados criados durante os testes, garantindo que uma execução não interfira nas seguintes.
-
-## 2. Tecnologias utilizadas
-
-- **Playwright:** framework de automação de testes.
-- **TypeScript:** linguagem utilizada para desenvolver os testes.
+- **Playwright:** automação de testes de API e interface.
+- **TypeScript:** linguagem utilizada na implementação dos testes.
 - **Node.js:** ambiente de execução.
-- **API REST:** comunicação com os recursos do sistema de biblioteca.
+- **Git e GitHub:** versionamento e documentação do projeto.
 
-## 3. Estrutura do projeto
+## Estrutura do projeto
 
 ```text
-tests/
-├── e2e/
-│   └── listarEmprestimo.spec.ts
-│
-└── Support/
-    ├── api-helpers.ts
-    └── dados.ts
+biblioteca-testes/
+├── .github/
+│   └── workflows/
+│       └── playwright.yml
+├── tests/
+│   ├── Support/
+│   │   ├── api-helpers.ts
+│   │   └── dados.ts
+│   ├── api/
+│   │   └── livros.spec.ts
+│   └── e2e/
+│       ├── listarEmprestimo.spec.ts
+│       └── realizarEmprestimo.spec.ts
+├── .gitignore
+├── package.json
+├── package-lock.json
+├── playwright.config.ts
+└── README.md
 ```
 
-### Descrição dos arquivos
-
-- `listarEmprestimo.spec.ts`: contém o teste automatizado de listagem de livros.
-- `api-helpers.ts`: reúne funções auxiliares para autenticação, cadastro, consulta e exclusão de livros e empréstimos.
-- `dados.ts`: centraliza os dados utilizados nos testes, como usuários e informações dos livros.
-
-## 4. Primeira missão — Listagem de livros e teardown
+## Missão 1 — Teardown: exclusão de livro após o teste
 
 ### Objetivo
 
-Criar um teste que cadastra um livro pela API, verifica se ele aparece corretamente na listagem da aplicação e realiza a limpeza dos dados após a execução.
+Garantir que o livro criado pela API durante a preparação do teste fosse excluído após sua execução, evitando o acúmulo de registros e problemas em execuções futuras.
 
-### Etapas implementadas
+### O que foi desenvolvido
 
 1. Autenticação do administrador pela API.
-2. Cadastro de um livro pela API utilizando a função `criarlivro()`.
-3. Armazenamento do ID do livro criado.
-4. Autenticação do leitor no navegador utilizando `loginNoNavegador()`.
-5. Acesso à página de listagem de livros.
-6. Verificação da presença do livro na listagem.
-7. Validação do título, autor e disponibilidade.
-8. Exclusão do livro ao final da execução utilizando `afterEach()`.
+2. Criação de um livro utilizando uma requisição POST.
+3. Autenticação do leitor no navegador.
+4. Acesso à listagem de livros.
+5. Validação de que o livro criado estava visível na interface.
+6. Implementação do `afterEach` para excluir o livro após o teste.
 
-### Validações realizadas
+### Implementação do teardown
 
-| Elemento | Resultado esperado |
-|---|---|
-| Linha do livro | Visível |
-| Título | Livro do Teste |
-| Autor | Autora Inventada |
-| Disponibilidade | Disponível |
+Foi utilizada a função `apagarlivro()` no `afterEach`:
 
-## 5. Implementação do teardown
-
-Inicialmente, o teste criava um livro pela API, mas não realizava sua exclusão após a execução.
-
-Isso provocava o acúmulo de registros na base de dados e poderia causar conflitos nas execuções seguintes.
-
-Para resolver esse problema, foi implementado o `afterEach`, utilizando a função `apagarlivro()` já disponível no arquivo `api-helpers.ts`.
-
-```ts
+```typescript
 test.afterEach(async ({ request }) => {
   if (livro !== undefined) {
     await apagarlivro(request, tokenAdmin, livro);
@@ -75,150 +61,199 @@ test.afterEach(async ({ request }) => {
 });
 ```
 
-### Como funciona?
+O `afterEach` é executado após cada teste, permitindo realizar a limpeza dos dados utilizados.
 
-- `afterEach`: executa após cada teste.
-- `livro !== undefined`: verifica se o livro recebeu um ID válido.
-- `apagarlivro()`: realiza a exclusão do livro pela API.
+### Validações realizadas
 
-Dessa forma, o livro criado durante o teste é removido ao final da execução.
+- Livro criado com sucesso pela API.
+- Livro identificado na listagem.
+- Título, autor e disponibilidade validados.
+- Exclusão do livro após a execução.
 
-## 6. Problemas identificados e correções
+### Teste de repetição
 
-Durante a implementação, foram encontrados problemas relacionados à geração dos dados de teste.
-
-### Problema 001 — ISBN duplicado (409 Conflict)
-
-Na primeira execução, a API retornou o status HTTP `409`.
-
-**Mensagem retornada:**
-
-```json
-{
-  "erro": "ISBN já cadastrado",
-  "status": 409
-}
-```
-
-**Causa:** o ISBN utilizado inicialmente era fixo (`9780000000001`) e já pertencia a outro livro cadastrado na API.
-
-**Correção:** foi modificada a função `novolivro()` para gerar um ISBN variável a cada execução.
-
-### Problema 002 — ISBN com quantidade inválida de dígitos (422 Unprocessable Entity)
-
-Após a primeira alteração, a API retornou o status HTTP `422`.
-
-**Mensagem retornada:**
-
-```text
-O campo 'isbn' deve conter 10 ou 13 dígitos numéricos, sem traços.
-```
-
-**Causa:** o ISBN gerado ultrapassava a quantidade permitida de dígitos.
-
-**Correção:** a geração foi ajustada para produzir exatamente 13 dígitos numéricos.
-
-Implementação utilizada:
-
-```ts
-export function novolivro(quantidade: number) {
-  const isbn = `978${Date.now().toString().slice(-10)}`;
-
-  return {
-    titulo: 'Livro do Teste',
-    autor: 'Autora Inventada',
-    isbn,
-    anoPublicacao: 2020,
-    quantidade,
-  };
-}
-```
-
-Essa implementação utiliza `Date.now()` para gerar um valor variável e `slice(-10)` para selecionar os últimos dez dígitos, acrescentando o prefixo `978`.
-
-## 7. Execução dos testes
-
-Para executar o teste individualmente:
-
-```bash
-npx playwright test tests/e2e/listarEmprestimo.spec.ts --project=e2e
-```
-
-Para executar o mesmo teste duas vezes:
+O teste foi executado duas vezes consecutivas com o comando:
 
 ```bash
 npx playwright test tests/e2e/listarEmprestimo.spec.ts --project=e2e --repeat-each=2
 ```
 
-O parâmetro `--repeat-each=2` permite verificar o comportamento do teste em duas execuções.
-
-## 8. Resultados obtidos
-
-Após as correções, o teste apresentou os seguintes resultados:
-
-### Primeira execução
-
-```text
-Status: 201
-Resposta: Livro criado com sucesso.
-1 passed (1.1s)
-```
-
-### Duas execuções consecutivas
+**Resultado obtido:**
 
 ```text
 Running 2 tests using 2 workers
 
-Livro criado com ID 8
-Livro criado com ID 9
+Status: 201
+Resposta: {"id":8,...}
+
+Status: 201
+Resposta: {"id":9,...}
 
 2 passed (859ms)
 ```
 
-<escape>**Resultado:**</escape> as duas execuções foram aprovadas, demonstrando que o teste consegue criar os registros, realizar as validações e executar a limpeza sem provocar conflitos entre as execuções.
+A execução demonstrou que foi possível criar e excluir registros em execuções repetidas, sem conflito de ISBN.
 
-## 9. Importância dos testes e do teardown
-
-Os testes automatizados permitem verificar se as funcionalidades do sistema estão funcionando conforme o esperado, reduzindo a necessidade de validações manuais repetitivas.
-
-O teardown é importante porque remove os dados criados durante os testes, evitando:
-
-- Acúmulo de registros na base de dados.
-- Conflitos entre execuções.
-- Falhas causadas por dados duplicados.
-- Dependência entre testes.
-- Resultados inconsistentes.
-
-A utilização do `afterEach` contribui para a independência e a confiabilidade da suíte de testes.
-
-## 10. Segunda missão — Empréstimo de livros pela interface
-
-**Status: Em desenvolvimento.**
-
-### Objetivo
-
-Criar um novo teste E2E que permita ao leitor realizar o empréstimo de um livro pela interface da aplicação.
-
-### Etapas previstas
-
-1. Criar um livro pela API.
-2. Autenticar o leitor no navegador.
-3. Acessar a tela de detalhes do livro.
-4. Clicar no botão de emprestar.
-5. Validar a mensagem de sucesso.
-6. Verificar se o livro aparece como indisponível.
-7. Localizar o empréstimo ativo pela API utilizando o ID do livro.
-8. Excluir o empréstimo.
-9. Excluir o livro.
-
-**Atenção à ordem do teardown:** primeiro deve ser excluído o empréstimo e, em seguida, o livro, pois existe uma relação entre esses registros.
+Para evitar duplicidade, foi utilizado um ISBN dinâmico na função `novolivro()`.
 
 ---
 
-## 11. Conclusão
+## Missão 2 — Teardown: exclusão de empréstimo e livro
 
-A primeira missão permitiu praticar a integração entre API e interface, a criação de dados para testes automatizados, a validação de funcionalidades e a implementação de teardown.
+### Objetivo
 
-Também foi possível identificar e corrigir problemas relacionados à duplicidade e à validação dos dados enviados à API.
+Automatizar o fluxo de realização de um empréstimo pela interface e garantir que os dados criados durante o teste fossem removidos corretamente.
 
-A execução repetida do teste, com duas aprovações consecutivas, demonstrou a importância da limpeza dos dados para manter a independência e a confiabilidade dos testes automatizados.
+Nesta atividade, o teste deveria realizar uma operação pela interface, consultar o resultado pela API e limpar os registros criados.
+
+### Fluxo do teste
+
+1. Autenticação do administrador pela API.
+2. Criação de um livro com apenas um exemplar disponível.
+3. Autenticação do leitor no navegador.
+4. Acesso à página de detalhes do livro.
+5. Verificação da disponibilidade inicial.
+6. Realização do empréstimo pela interface.
+7. Validação da mensagem de sucesso.
+8. Verificação de que o livro ficou indisponível.
+9. Consulta à API para localizar o empréstimo ativo.
+10. Exclusão do empréstimo.
+11. Exclusão do livro.
+
+### Validações realizadas
+
+- O livro iniciou com status disponível.
+- O leitor conseguiu realizar o empréstimo.
+- A mensagem de sucesso foi apresentada.
+- A quantidade disponível foi atualizada para zero.
+- O livro passou para o status indisponível.
+- O empréstimo foi registrado na API.
+
+### Implementação do teardown
+
+Para localizar o empréstimo, foi utilizada a função `buscaremprestimoativo()`, que consulta os empréstimos ativos e procura aquele associado ao ID do livro.
+
+A limpeza foi implementada no `afterEach`:
+
+```typescript
+test.afterEach(async ({ request }) => {
+  if (livro !== undefined) {
+    const emprestimo = await buscaremprestimoativo(
+      request,
+      tokenAdmin,
+      livro
+    );
+
+    if (emprestimo !== undefined) {
+      await apagaremprestimo(
+        request,
+        tokenAdmin,
+        emprestimo
+      );
+
+      const emprestimoRestante = await buscaremprestimoativo(
+        request,
+        tokenAdmin,
+        livro
+      );
+
+      expect(emprestimoRestante).toBeUndefined();
+    }
+
+    await apagarlivro(request, tokenAdmin, livro);
+  }
+});
+```
+
+### Por que excluir o empréstimo antes do livro?
+
+O empréstimo está relacionado ao livro. Por isso, a exclusão deve respeitar a dependência entre os registros.
+
+A ordem utilizada foi:
+
+1. Localizar o empréstimo ativo.
+2. Excluir o empréstimo.
+3. Consultar novamente a API para confirmar a exclusão.
+4. Excluir o livro.
+
+Essa sequência evita deixar registros relacionados inconsistentes.
+
+### Evidência da execução
+
+Comando utilizado:
+
+```bash
+npx playwright test tests/e2e/realizarEmprestimo.spec.ts --project=e2e
+```
+
+Resultado obtido:
+
+```text
+Running 1 test using 1 worker
+
+Status: 201
+Livro criado: ID 12
+Empréstimo criado: ID 3
+
+--- INÍCIO DO TEARDOWN ---
+Empréstimo encontrado: ID 3
+Empréstimo excluído com sucesso!
+Verificação: nenhum empréstimo ativo encontrado.
+Livro ID 12 excluído com sucesso!
+--- FIM DO TEARDOWN ---
+
+1 passed (1.0s)
+```
+
+O resultado confirmou que o empréstimo foi excluído, que não havia mais empréstimo ativo associado ao livro e que o livro também foi removido.
+
+---
+
+## Funções auxiliares desenvolvidas
+
+O arquivo `tests/Support/api-helpers.ts` concentra funções reutilizáveis para facilitar a implementação dos testes.
+
+| Função | Responsabilidade |
+|---|---|
+| `login()` | Realiza autenticação pela API e retorna o token. |
+| `loginNoNavegador()` | Autentica o usuário e configura o navegador. |
+| `criarlivro()` | Cria um livro pela API e retorna seu ID. |
+| `apagarlivro()` | Exclui um livro pela API. |
+| `buscaremprestimoativo()` | Localiza um empréstimo ativo pelo ID do livro. |
+| `apagaremprestimo()` | Exclui um empréstimo pela API. |
+
+O arquivo `tests/Support/dados.ts` concentra os dados utilizados nos testes, como credenciais de administrador e leitor e a função de geração de livros com ISBN dinâmico.
+
+## Conceitos praticados
+
+- Testes automatizados de API.
+- Testes End-to-End (E2E).
+- Autenticação e autorização por token.
+- Requisições HTTP: GET, POST e DELETE.
+- Integração entre API e interface web.
+- Fixtures e hooks do Playwright.
+- `beforeEach` e `afterEach`.
+- Setup e teardown.
+- Validação de respostas e status HTTP.
+- Gerenciamento de dados de teste.
+- Reutilização de funções auxiliares.
+- Execução repetida de testes.
+
+## Resultados alcançados
+
+| Atividade | Resultado |
+|---|---|
+| Missão 1 — Listagem e exclusão de livro | 2 execuções aprovadas |
+| Missão 2 — Realização de empréstimo e limpeza | 1 execução aprovada |
+
+**Total: 3 execuções de teste aprovadas nas evidências registradas.**
+
+## Considerações finais
+
+As atividades permitiram praticar a automação de testes em diferentes camadas da aplicação, combinando requisições à API com interações realizadas no navegador.
+
+Um dos principais aprendizados foi compreender a importância do setup e teardown para manter os testes independentes, organizados e repetíveis.
+
+Também foi possível aplicar a consulta à API para validar operações realizadas pela interface e garantir que os dados temporários fossem removidos ao final de cada execução.
+
+**Projeto desenvolvido para fins de estudo e prática em Qualidade de Software (QA), utilizando Playwright e TypeScript.**
