@@ -1,16 +1,29 @@
+
 import { test, expect } from '@playwright/test';
-import { login, loginNoNavegador, criarlivro } from '../Support/api-helpers';
+import {
+  login,
+  loginNoNavegador,
+  criarlivro,
+  apagarlivro,
+} from '../Support/api-helpers';
 import { admin, leitor, novolivro } from '../Support/dados';
 
 test.use({ baseURL: 'http://localhost:3000' });
 
 let tokenAdmin: string;
-let livro: number;
+let livro: number | undefined;
 
 test.beforeEach(async ({ request, page }) => {
   tokenAdmin = await login(request, admin.email, admin.senha);
+
   livro = await criarlivro(request, tokenAdmin, novolivro(2));
-  await loginNoNavegador(page, request, leitor.email, leitor.senha);
+
+  await loginNoNavegador(
+    page,
+    request,
+    leitor.email,
+    leitor.senha
+  );
 });
 
 test('livro criado pela API aparece na listagem', async ({ page }) => {
@@ -23,5 +36,7 @@ test('livro criado pela API aparece na listagem', async ({ page }) => {
 });
 
 test.afterEach(async ({ request }) => {
-  // TODO: apagar o livro criado no setup
+  if (livro !== undefined) {
+    await apagarlivro(request, tokenAdmin, livro);
+  }
 });

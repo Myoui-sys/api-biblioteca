@@ -9,9 +9,10 @@ export const leitor = {
   senha: 'Leitor@123',
 };
 
-// Monta os dados de um livro para o teste criar pela API.
-// O ISBN é fixo de propósito: sem teardown, a segunda execução quebra com 409.
-export function novolivro(quantidade: number, isbn = '9780000000001') {
+// Monta os dados de um livro para os testes
+export function novolivro(quantidade: number) {
+  const isbn = `978${Date.now().toString().slice(-10)}`;
+
   return {
     titulo: 'Livro do Teste',
     autor: 'Autora Inventada',
